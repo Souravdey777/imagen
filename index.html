@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Editor — Sourav.AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111114;
+    --surface-2: #18181c;
+    --surface-3: #222228;
+    --border: #2a2a32;
+    --border-focus: #1C86FF;
+    --text: #e8e8ed;
+    --text-dim: #7a7a88;
+    --accent-blue: #1C86FF;
+    --accent-teal: #5ADDCF;
+    --radius: 10px;
+  }
+
+  html { font-size: 14px; }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Ambient glow ── */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -40%; left: -20%;
+    width: 60%; height: 80%;
+    background: radial-gradient(ellipse, rgba(28,134,255,.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -30%; right: -10%;
+    width: 50%; height: 70%;
+    background: radial-gradient(ellipse, rgba(90,221,207,.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    background: rgba(10,10,12,.7);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -.3px;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-teal));
+    display: grid; place-items: center;
+    font-size: .75rem; font-weight: 700; color: #000;
+  }
+  .logo span { color: var(--text-dim); font-weight: 400; margin-left: 2px; }
+
+  .header-hint {
+    font-size: .8rem;
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .header-hint kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: .7rem;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    flex: 1;
+  }
+
+  /* ── Panel (left) ── */
+  .panel {
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 57px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .panel-label {
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  textarea, input[type="text"], input[type="number"] {
+    font-family: 'Poppins', sans-serif;
+    font-size: .9rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+  }
+  textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(28,134,255,.12);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+  }
+  textarea::placeholder { color: var(--text-dim); opacity: .6; }
+
+  .hint {
+    font-size: .75rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .hint code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-family: 'Poppins', monospace;
+    font-size: .7rem;
+    color: var(--accent-teal);
+  }
+
+  /* ── Control row ── */
+  .control-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .control-group label {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: .3px;
+  }
+
+  /* ── Alignment buttons ── */
+  .align-btns {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .align-btn {
+    flex: 1;
+    background: var(--surface);
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 0;
+    cursor: pointer;
+    transition: all .15s;
+    display: grid;
+    place-items: center;
+    font-size: 0;
+  }
+  .align-btn + .align-btn { border-left: 1px solid var(--border); }
+  .align-btn:hover { background: var(--surface-2); color: var(--text); }
+  .align-btn.active {
+    background: var(--accent-blue);
+    color: #fff;
+  }
+  .align-btn svg { width: 16px; height: 16px; }
+
+  /* ── Font size input ── */
+  input[type="number"] {
+    -moz-appearance: textfield;
+    width: 100%;
+  }
+  input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+
+  /* ── Separator ── */
+  .sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── Export buttons ── */
+  .export-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .export-btn {
+    font-family: 'Poppins', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: 10px 0;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .export-btn:hover {
+    border-color: var(--accent-blue);
+    background: var(--surface-2);
+  }
+  .export-btn.primary {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-teal));
+    border-color: transparent;
+    color: #000;
+  }
+  .export-btn.primary:hover {
+    opacity: .9;
+  }
+  .export-btn svg { width: 14px; height: 14px; }
+
+  /* ── Preview area (right) ── */
+  .preview-area {
+    display: grid;
+    place-items: center;
+    padding: 40px;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(28,134,255,.03) 0%, transparent 50%),
+      repeating-conic-gradient(var(--surface) 0% 25%, var(--bg) 0% 50%) 0 0 / 24px 24px;
+    overflow: auto;
+    max-height: calc(100vh - 57px);
+  }
+
+  .preview-wrapper {
+    position: relative;
+  }
+  .preview-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    border-radius: 40px;
+    background: radial-gradient(ellipse, rgba(28,134,255,.08), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  #preview-canvas {
+    border-radius: 4px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .workspace {
+      grid-template-columns: 1fr;
+    }
+    .panel {
+      max-height: none;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-area {
+      max-height: none;
+      min-height: 500px;
+    }
+  }
+
+  /* ── Scrollbar ── */
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">S</div>
+      Card Editor <span>v1.0</span>
+    </div>
+    <div class="header-hint">
+      Wrap text in <kbd>**</kbd> for gradient &nbsp;·&nbsp; New line = new row
+    </div>
+  </header>
+
+  <div class="workspace">
+
+    <!-- ── Left Panel ── -->
+    <div class="panel">
+
+      <!-- Text blocks -->
+      <div class="panel-section">
+        <div class="panel-label">Content</div>
+        <textarea id="block1" spellcheck="false">Great **code reviews** do
+more than find bugs
+
+They build better devs.</textarea>
+        <div class="hint">Each line becomes a separate row. Use <code>**text**</code> for gradient highlight.</div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Controls -->
+      <div class="panel-section">
+        <div class="panel-label">Typography</div>
+        <div class="control-row">
+          <div class="control-group">
+            <label>Alignment</label>
+            <div class="align-btns">
+              <button class="align-btn" data-align="left" title="Left">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="2" y1="7" x2="10" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/><line x1="2" y1="15" x2="8" y2="15"/></svg>
+              </button>
+              <button class="align-btn" data-align="center" title="Center">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="1" y1="3" x2="15" y2="3"/><line x1="3" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="15" y2="11"/><line x1="4" y1="15" x2="12" y2="15"/></svg>
+              </button>
+              <button class="align-btn" data-align="right" title="Right">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/><line x1="8" y1="15" x2="14" y2="15"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="control-group">
+            <label>Font Size (px)</label>
+            <input type="number" id="fontSize" value="36" min="12" max="72" step="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Footer info -->
+      <div class="panel-section">
+        <div class="panel-label">Author Info</div>
+        <div class="control-row">
+          <div class="control-group">
+            <label>Name</label>
+            <input type="text" id="authorName" value="Sourav Dey">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>URL</label>
+          <input type="text" id="authorUrl" value="https://www.Souravdey.Space">
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Export -->
+      <div class="panel-section">
+        <div class="panel-label">Export</div>
+        <div class="export-grid">
+          <button class="export-btn primary" onclick="downloadImage('png')">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 10.5l-3.5-3.5h2.5v-5h2v5h2.5zM2 12h12v2H2z"/></svg>
+            PNG
+          </button>
+          <button class="export-btn" onclick="downloadImage('jpg')">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 10.5l-3.5-3.5h2.5v-5h2v5h2.5zM2 12h12v2H2z"/></svg>
+            JPG
+          </button>
+          <button class="export-btn" onclick="downloadSVG()">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 10.5l-3.5-3.5h2.5v-5h2v5h2.5zM2 12h12v2H2z"/></svg>
+            SVG
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Preview Area ── -->
+    <div class="preview-area">
+      <div class="preview-wrapper">
+        <canvas id="preview-canvas" width="720" height="720"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('preview-canvas');
+const ctx = canvas.getContext('2d');
+const W = 720, H = 720;
+
+// State
+let state = {
+  block1: document.getElementById('block1').value,
+  align: 'left',
+  fontSize: 36,
+  authorName: 'Sourav Dey',
+  authorUrl: 'https://www.Souravdey.Space',
+};
+
+// Avatar embedded as data URL — no CORS issues
+const AVATAR_DATA_URL = 'data:image/png;base64,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';
+const avatarImg = new Image();
+avatarImg.onload = () => render();
+avatarImg.src = AVATAR_DATA_URL;
+
+// Load Poppins via FontFace API to ensure canvas can use it
+const fontNormal = new FontFace('Poppins', 'url(https://fonts.gstatic.com/s/poppins/v21/pxiEyp8kv8JHgFVrJJfecg.woff2)', { weight: '400' });
+const fontSemiBold = new FontFace('Poppins', 'url(https://fonts.gstatic.com/s/poppins/v21/pxiByp8kv8JHgFVrLEj6Z1xlEA.woff2)', { weight: '600' });
+
+Promise.all([fontNormal.load(), fontSemiBold.load()]).then(fonts => {
+  fonts.forEach(f => document.fonts.add(f));
+  render();
+});
+
+// ── Parse **gradient** syntax ──
+function parseSegments(text) {
+  const regex = /\*\*(.+?)\*\*/g;
+  const segments = [];
+  let last = 0;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) segments.push({ text: text.slice(last, m.index), gradient: false });
+    segments.push({ text: m[1], gradient: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) segments.push({ text: text.slice(last), gradient: false });
+  return segments;
+}
+
+// ── Create gradient for text ──
+function makeTextGradient(x, y, width) {
+  const g = ctx.createLinearGradient(x + width, y, x, y);
+  g.addColorStop(0.1704, '#5ADDCF');
+  g.addColorStop(0.7374, '#1C86FF');
+  return g;
+}
+
+// ── Measure segments width ──
+function measureSegments(segments, font) {
+  ctx.font = font;
+  return segments.reduce((w, s) => w + ctx.measureText(s.text).width, 0);
+}
+
+// ── Draw segments ──
+function drawSegments(segments, x, y, font) {
+  ctx.font = font;
+  let cx = x;
+  for (const seg of segments) {
+    const w = ctx.measureText(seg.text).width;
+    if (seg.gradient) {
+      ctx.fillStyle = makeTextGradient(cx, y - state.fontSize * 0.7, w);
+    } else {
+      ctx.fillStyle = '#FFFFFF';
+    }
+    ctx.fillText(seg.text, cx, y);
+    cx += w;
+  }
+}
+
+// ── Get X for alignment ──
+function getX(lineWidth) {
+  const pad = 59; // inner card padding from x=119
+  const cardLeft = 60;
+  const cardWidth = 600;
+  const innerLeft = cardLeft + pad;
+  const innerRight = cardLeft + cardWidth - pad;
+  const innerWidth = innerRight - innerLeft;
+
+  if (state.align === 'left') return innerLeft;
+  if (state.align === 'center') return innerLeft + (innerWidth - lineWidth) / 2;
+  return innerRight - lineWidth;
+}
+
+// ── Render preview ──
+function render() {
+  renderToCtx(ctx, null);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ── Events ──
+document.getElementById('block1').addEventListener('input', e => { state.block1 = e.target.value; render(); });
+document.getElementById('fontSize').addEventListener('input', e => { state.fontSize = parseInt(e.target.value) || 36; render(); });
+document.getElementById('authorName').addEventListener('input', e => { state.authorName = e.target.value; render(); });
+document.getElementById('authorUrl').addEventListener('input', e => { state.authorUrl = e.target.value; render(); });
+
+// Alignment
+document.querySelectorAll('.align-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.align = btn.dataset.align;
+    render();
+  });
+});
+// Set default
+document.querySelector('[data-align="left"]').classList.add('active');
+
+// ── Export PNG / JPG ──
+function downloadImage(format) {
+  // Render onto a clean offscreen canvas so CORS never blocks toDataURL
+  const offscreen = document.createElement('canvas');
+  offscreen.width = W;
+  offscreen.height = H;
+  const octx = offscreen.getContext('2d');
+  renderToCtx(octx, () => {
+    const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+    const dataUrl = offscreen.toDataURL(mime, 0.95);
+    const link = document.createElement('a');
+    link.download = `card.${format}`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+}
+
+// ── Shared render function that works on any context ──
+function renderToCtx(c, callback) {
+  c.clearRect(0, 0, W, H);
+
+  const fs = state.fontSize;
+  const lineHeight = fs * 1.2;
+  const font = `600 ${fs}px Poppins, sans-serif`;
+
+  // BG gradient
+  const bgGrad = c.createLinearGradient(0, H, 0, 0);
+  bgGrad.addColorStop(0.3769, '#1C86FF');
+  bgGrad.addColorStop(0.9463, '#5ADDCF');
+  c.fillStyle = bgGrad;
+  c.fillRect(0, 0, W, H);
+
+  // Card shadow
+  c.save();
+  c.shadowColor = 'rgba(0,0,0,0.50)';
+  c.shadowBlur = 50;
+  c.beginPath();
+  roundRect(c, 60, 60, 600, 600, 16);
+  c.fillStyle = '#000000';
+  c.fill();
+  c.restore();
+
+  // Card
+  c.beginPath();
+  roundRect(c, 60, 60, 600, 600, 16);
+  c.fillStyle = '#000000';
+  c.fill();
+
+  // Text
+  const lines = state.block1.split('\n');
+  const totalTextHeight = lines.length * lineHeight;
+  const contentTop = 60;
+  const contentBottom = 555;
+  const contentHeight = contentBottom - contentTop;
+  const startY = contentTop + (contentHeight - totalTextHeight) / 2 + fs * 0.7;
+
+  lines.forEach((line, i) => {
+    const segs = parseSegments(line);
+    c.font = font;
+    const w = segs.reduce((acc, s) => acc + c.measureText(s.text).width, 0);
+    const x = getX(w);
+    let cx = x;
+    for (const seg of segs) {
+      c.font = font;
+      const sw = c.measureText(seg.text).width;
+      if (seg.gradient) {
+        const g = c.createLinearGradient(cx + sw, startY + i * lineHeight, cx, startY + i * lineHeight);
+        g.addColorStop(0.1704, '#5ADDCF');
+        g.addColorStop(0.7374, '#1C86FF');
+        c.fillStyle = g;
+      } else {
+        c.fillStyle = '#FFFFFF';
+      }
+      c.fillText(seg.text, cx, startY + i * lineHeight);
+      cx += sw;
+    }
+  });
+
+  // Divider
+  const divGrad = c.createLinearGradient(119, 0, 602, 0);
+  divGrad.addColorStop(0, '#1C86FF');
+  divGrad.addColorStop(1, '#5ADDCF');
+  c.fillStyle = divGrad;
+  c.fillRect(119, 555, 483, 2);
+
+  // Author name
+  c.font = '600 16px Poppins, sans-serif';
+  c.fillStyle = '#FFFFFF';
+  c.fillText(state.authorName, 172, 594);
+
+  // URL
+  c.font = '400 13px Poppins, sans-serif';
+  c.fillStyle = '#bbbbbb';
+  c.fillText(state.authorUrl, 172, 614);
+
+  // Avatar — always available as embedded data URL, no CORS issues
+  if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+    c.save();
+    c.beginPath();
+    c.arc(140, 600, 21, 0, Math.PI * 2);
+    c.closePath();
+    c.clip();
+    c.drawImage(avatarImg, 119, 579, 42, 42);
+    c.restore();
+  }
+  callback && callback();
+}
+
+// ── Export SVG ──
+function downloadSVG() {
+  const fs = state.fontSize;
+  const lineHeight = fs * 1.2;
+  const font = `600 ${fs}px Poppins, sans-serif`;
+
+  const lines = state.block1.split('\n');
+  const totalTextHeight = lines.length * lineHeight;
+  const contentTop = 60;
+  const contentBottom = 555;
+  const contentHeight = contentBottom - contentTop;
+  const startY = contentTop + (contentHeight - totalTextHeight) / 2 + fs * 0.7;
+
+  // We need to measure text widths with canvas for alignment
+  ctx.font = font;
+
+  let textAnchor = 'start';
+  if (state.align === 'center') textAnchor = 'middle';
+  if (state.align === 'right') textAnchor = 'end';
+
+  function getAlignX(lineWidth) {
+    const innerLeft = 119;
+    const innerRight = 602;
+    const innerWidth = innerRight - innerLeft;
+    if (state.align === 'left') return innerLeft;
+    if (state.align === 'center') return innerLeft + innerWidth / 2;
+    return innerRight;
+  }
+
+  function buildTextElements(lines, baseY) {
+    let elems = '';
+    lines.forEach((line, i) => {
+      const segs = parseSegments(line);
+      const y = baseY + i * lineHeight;
+      // For SVG with text-anchor, we use a single x
+      const x = getAlignX();
+
+      let inner = '';
+      segs.forEach(seg => {
+        if (seg.gradient) {
+          inner += `<tspan fill="url(#text-grad)">${escXml(seg.text)}</tspan>`;
+        } else {
+          inner += escXml(seg.text);
+        }
+      });
+
+      elems += `  <text x="${x}" y="${y}" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="${fs}" fill="#FFFFFF" letter-spacing="-0.3" text-anchor="${textAnchor}">${inner}</text>\n`;
+    });
+    return elems;
+  }
+
+  function escXml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Author anchor for SVG is always left
+  const svg = `<svg width="720" height="720" viewBox="0 0 720 720" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <linearGradient id="bg-grad" gradientTransform="rotate(-90, 0.5, 0.5)" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="37.69%" stop-color="#1C86FF"/>
+      <stop offset="94.63%" stop-color="#5ADDCF"/>
+    </linearGradient>
+    <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1C86FF"/>
+      <stop offset="100%" stop-color="#5ADDCF"/>
+    </linearGradient>
+    <linearGradient id="text-grad" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="17.04%" stop-color="#5ADDCF"/>
+      <stop offset="73.74%" stop-color="#1C86FF"/>
+    </linearGradient>
+    <clipPath id="avatar-clip">
+      <circle cx="140" cy="600" r="21"/>
+    </clipPath>
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="25" flood-color="rgba(0,0,0,0.50)"/>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="720" height="720" fill="url(#bg-grad)"/>
+  <rect x="60" y="60" width="600" height="600" rx="16" fill="#000" filter="url(#card-shadow)"/>
+${buildTextElements(lines, startY)}  <rect x="119" y="555" width="483" height="2" rx="1" fill="url(#line-grad)"/>
+  <image xlink:href="${AVATAR_DATA_URL}" x="119" y="579" width="42" height="42" clip-path="url(#avatar-clip)"/>
+  <text x="172" y="594" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="16" fill="#FFFFFF">${escXml(state.authorName)}</text>
+  <text x="172" y="614" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="13" fill="#bbbbbb">${escXml(state.authorUrl)}</text>
+</svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = 'card.svg';
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
