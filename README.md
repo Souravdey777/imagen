@@ -4,6 +4,7 @@ A sleek, browser-based card generator for creating stunning social media quote c
 
 ![Card Studio Preview](https://img.shields.io/badge/Status-Live-1C86FF?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square) ![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-333?style=flat-square)
 
+![ImaGen Card Studio Preview](./Screenshot.png)
 
 ---
 
